@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from uuid import uuid4
 import os
 # import msgpack
+from aiortc.contrib.media import MediaPlayer, MediaRelay
 
 from aiortc.rtcconfiguration import RTCConfiguration, RTCIceServer
 
@@ -126,6 +127,17 @@ class Util:
         """Return True if using https for the signaling server connection."""
         return url.startswith("https:")
 
+    def create_local_tracks(self, play_from, decode, source, format, options, relay, webcam):
+        if play_from: # play from video file
+            player = MediaPlayer(play_from, decode=decode)
+            return player.audio, player.video
+        else:
+            if relay is None:
+                webcam = MediaPlayer(
+                    source, format=format, options=options
+                )
+                relay = MediaRelay()
+            return None, relay.subscribe(webcam.video)
 
 # initialize a global util instance to be used by other modules
 util = Util()
