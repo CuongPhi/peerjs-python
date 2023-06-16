@@ -1,6 +1,7 @@
 [![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/ambianic/peerjs-python)
 
 # peerjs-python
+Forked from [ambianic/peerjs-python](https://github.com/ambianic/peerjs-python)
 
 Python port of [PeerJS](https://github.com/peers) client. 
   - Tracked in issue [#160](https://github.com/peers/peerjs/issues/610) of the official PeerJS project.
@@ -11,6 +12,7 @@ Enables [Progressive Web Apps](https://developer.mozilla.org/en-US/docs/Web/Prog
 
 - *HTTP Proxy* over WebRTC data channel. It allows PeerJS browser clients to make remote REST requests over WebRTC to a local REST API running behind a firewall.
 - *Plug-and-play* functionality that allows seamless Airdrop-like pairing between peers running on the same local network.
+- *A peer* can create a P2P media stream connection to a remote peer
 
 See Ambianic UI [PNP module](https://github.com/ambianic/ambianic-ui/blob/master/src/store/pnp.js) for a real-world example how PeerJS Python is used with PnP and HTTP Proxy.
 
