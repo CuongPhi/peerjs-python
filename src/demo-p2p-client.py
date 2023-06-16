@@ -27,9 +27,9 @@ webScreen = None
 
 # persisted config dict
 
-AMBIANIC_PNP_HOST = 'localhost' #'www.web-rtc.rectelework.com'
-AMBIANIC_PNP_PORT = 9001 #35666
-AMBIANIC_PNP_SECURE = False #True
+AMBIANIC_PNP_HOST = 'localhost'
+AMBIANIC_PNP_PORT = 9001
+AMBIANIC_PNP_SECURE = False
 
 DEFAULT_LOG_LEVEL = 'INFO'
 
@@ -57,32 +57,6 @@ http_session = None
 # flags when user requests shutdown
 # via CTRL+C or another system signal
 _is_shutting_down: bool = False
-
-
-# async def _consume_signaling(pc, signaling):
-#     while True:
-#         obj = await signaling.receive()
-#         if isinstance(obj, RTCSessionDescription):
-#             await pc.setRemoteDescription(obj)
-#             if obj.type == "offer":
-#                 # send answer
-#                 await pc.setLocalDescription(await pc.createAnswer())
-#                 await signaling.send(pc.localDescription)
-#         elif isinstance(obj, RTCIceCandidate):
-#             pc.addIceCandidate(obj)
-#         elif obj is None:
-#             print("Exiting")
-#             break
-
-
-
-async def join_peer_room(peer=None):
-    """Join a peer room with other local peers."""
-    # first try to find the remote peer ID in the same room
-    myRoom = PeerRoom(peer)
-    logger.debug('Fetching room members...')
-    peerIds = await myRoom.getRoomMembers()
-    logger.info('myRoom members {}', peerIds)
 
 
 def _savePeerId(peerId=None):
@@ -234,19 +208,19 @@ def _set_peer_events(peer=None):
 
 
 def _set_conn_event_handlers(peerConnection):
-
     @peerConnection.on(ConnectionEventType.Open)
     async def pc_open():
         logger.info('Connected to: {}', peerConnection.peer)
 
     @peerConnection.on(ConnectionEventType.Stream)
     async def pc_stream(remoteStream):
+        # need open & play stream here
         logger.info('pc_stream:',remoteStream)
+
 
     # Handle incoming data (messages only since this is the signal sender)
     @peerConnection.on(ConnectionEventType.Data)
     async def pc_data(data):
-        logger.info('data received from remote peer \n{}', data)
         msg = json.loads(data)
         logger.info('data parse from remote peer \n{}', msg)
 
@@ -267,7 +241,6 @@ async def pnp_service_connect() -> Peer:
     logger.info('last saved savedPeerId {}', savedPeerId)
     new_token = util.randomToken()
     logger.info('Peer session token {}', new_token)
-
 
     options = PeerOptions(
         host=config['signaling_server'],
@@ -304,7 +277,7 @@ async def make_discoverable(peer=None):
                 logger.info('Peer destroyed. Will create a new peer.')
                 peer = await pnp_service_connect()
             elif peer.open:
-                logger.info('Peer open: ', savedPeerId)
+                logger.info('Peer open, id: {}', savedPeerId)
             elif peer.disconnected:
                 logger.info('Peer disconnected. Will try to reconnect.')
                 await peer.reconnect()
