@@ -9,6 +9,7 @@ from pyee import AsyncIOEventEmitter
 from .enums import ConnectionEventType, ConnectionType, PeerErrorType, ServerMessageType
 from .util import util
 from .baseconnection import BaseConnection
+from aiortc import MediaStreamTrack
 
 log = logging.getLogger(__name__)
 
@@ -48,8 +49,10 @@ class Negotiator:
         peerConnection = self._startPeerConnection()
         # Set the connection wrapper's RTCPeerConnection.
         self.connection.peerConnection = peerConnection
-        if self.connection.type == ConnectionType.Media and _stream:
-            self._addTracksToConnection(_stream, peerConnection)
+        if self.connection.type == ConnectionType.Media:
+            if _stream:
+                #self._addTracksToConnection(_stream, peerConnection) # must be added tracks from _stream
+                peerConnection.addTrack(_stream) # _stream is this case is an MediaStreamTrack
         # What do we need to do now?
         if originator:
             # originate connection offer
@@ -171,11 +174,11 @@ class Negotiator:
         @peerConnection.on("track")
         def peerconn_ontrack(evt):
             log.info("Received remote stream.")
-            stream = evt.streams[0]
-            connection = provider.getConnection(peerId, connectionId)
-            if connection.type == ConnectionType.Media:
-                mediaConnection = connection
-                self._addStreamToMediaConnection(stream, mediaConnection)
+            # stream = evt.streams[0]
+            # connection = provider.getConnection(peerId, connectionId)
+            # if connection.type == ConnectionType.Media:
+            #     mediaConnection = connection
+            #     self._addStreamToMediaConnection(stream, mediaConnection)
 
     async def cleanup(self) -> None:
         """Clean up resources after connection closes."""
@@ -206,14 +209,15 @@ class Negotiator:
         provider = self.connection.provider
         try:
             offer = await peerConnection.createOffer(
-                self.connection.options.constraints)
+                #self.connection.options.constraints or None
+            )
             log.info("Created offer.")
 
-            if self.connection.options.sdpTransform and \
-               callable(self.connection.options.sdpTransform):
-                tSDP = self.connection.options.sdpTransform(offer.sdp)
-                if tSDP:
-                    offer.sdp = tSDP
+            # if self.connection.options.sdpTransform and \
+            #    callable(self.connection.options.sdpTransform):
+            #     tSDP = self.connection.options.sdpTransform(offer.sdp)
+            #     if tSDP:
+            #         offer.sdp = tSDP
             try:
                 await peerConnection.setLocalDescription(offer)
                 log.info(f"Set localDescription:{offer} "
@@ -330,7 +334,8 @@ class Negotiator:
             log.exception("Failed to handleCandidate, ", err)
 
     def _addTracksToConnection(
-         stream,  #: MediaStream
+         self,
+         stream: MediaStreamTrack,
          peerConnection: RTCPeerConnection
          ) -> None:
         log.debug(f'add tracks from stream ${stream.id} to peer connection')
@@ -344,8 +349,9 @@ class Negotiator:
             peerConnection.addTrack(track, stream)
 
     def _addStreamToMediaConnection(
-         stream,  # : MediaStream,
-         mediaConnection  # : MediaConnection
+         self,
+         stream: MediaStreamTrack,
+         mediaConnection : any
          ) -> None:
         log.debug(
             f'add stream {stream.id} to media connection '

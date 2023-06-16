@@ -5,7 +5,7 @@ from enum import Enum, unique
 @unique
 class ConnectionEventType(Enum):
     """Connection event types."""
-
+    Call = "Call"
     Open = "Open"
     Stream = "Stream"
     Data = "Data"
@@ -90,3 +90,4 @@ class ServerMessageType(Enum):
     InvalidKey = "INVALID-KEY"  # The given API key cannot be found.
     Leave = "LEAVE"  # Another peer has closed its connection to this peer.
     Expire = "EXPIRE"  # The offer sent to a peer has expired without response.
+    Custom = "CUSTOM" # Custom server message type from Peerjs-Server

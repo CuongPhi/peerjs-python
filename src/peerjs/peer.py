@@ -9,9 +9,11 @@ from typing import Any, List
 import traceback
 
 from pyee import AsyncIOEventEmitter
+from aiortc import MediaStreamTrack
 
 from .api import API
 from .baseconnection import BaseConnection
+from .mediaconnection import MediaConnection
 from .dataconnection import DataConnection
 from .enums import (
     ConnectionType,
@@ -19,6 +21,7 @@ from .enums import (
     PeerEventType,
     ServerMessageType,
     SocketEventType,
+    ConnectionEventType
 )
 from .servermessage import ServerMessage
 from .socket import Socket
@@ -35,6 +38,20 @@ class PeerConnectOption:
     metadata: Any = None
     serialization: str = None
     reliable: bool = None
+
+@dataclass
+class CallOption:
+    """Peer CallOption configuration options."""
+    sdpTransform: Any = None
+    metadata: Any = None
+
+
+@dataclass
+class AnswerOption:
+    """Peer AnswerOption configuration options."""
+
+    sdpTransform: Any = None
+
 
 
 PEER_DEFAULT_KEY = "peerjs"
@@ -177,7 +194,10 @@ class Peer(AsyncIOEventEmitter):
 
         @socket.on(SocketEventType.Message)
         async def on_message(data: ServerMessage):
-            await self._handleMessage(data)
+            if data.type == ServerMessageType.Custom:
+                print('Receive message from server')
+                print(data.payload)
+            else: await self._handleMessage(data)
 
         @socket.on(SocketEventType.Error)
         async def on_error(error: str):
@@ -292,16 +312,18 @@ class Peer(AsyncIOEventEmitter):
 
         # Create a new connection.
         if payload['type'] == ConnectionType.Media.value:
-            pass
-        # MediaConnection not supported yet in the Python port of PeerJS yet.
-        #       Contributions welcome!
-        #   connection = new MediaConnection(peerId, this, {
-        #     connectionId: connectionId,
-        #     _payload: payload,
-        #     metadata: payload.metadata
-        #   });
-        #   this._addConnection(peerId, connection);
-        #   this.emit(PeerEventType.Call, connection);
+            #payload._stream= None
+            connection = MediaConnection(
+                peerId=peerId,
+                provider=self,
+                connectionId=connectionId,
+                _payload=payload,
+                _stream=None,
+                metadata=payload.get('metadata', None)
+            )
+            #await connection.start()
+            self._addConnection(peerId, connection)
+            self.emit(PeerEventType.Call, connection)
         elif payload['type'] == ConnectionType.Data.value:
             connection = DataConnection(
                 peerId=peerId,
@@ -366,42 +388,31 @@ class Peer(AsyncIOEventEmitter):
         self._addConnection(peer, dataConnection)
         return dataConnection
 
-    # MediaConnection not implemented in Python port yet.
-    #           Contributions welcome!
-    # /**
-    # * Returns a MediaConnection to the specified peer.
-    # See documentation for a
-    # * complete list of options.
-    # */
-    # call(peer: string, stream: MediaStream, options: any = {}):
-    #    MediaConnection {
-    # if (this.disconnected) {
-    #   logger.warn(
-    #     "You cannot connect to a new Peer because you called " +
-    #     ".disconnect() on this Peer and ended your connection with the " +
-    #     "server. You can create a new Peer to reconnect."
-    #   );
-    #   this.emitError(
-    #     PeerErrorType.Disconnected,
-    #     "Cannot connect to new Peer after disconnecting from server."
-    #   );
-    #   return;
-    # }
-    #
-    # if (!stream) {
-    #   logger.error(
-    #     "To call a peer, you must provide a stream from your browser's
-    #       `getUserMedia`."
-    #   );
-    #   return;
-    # }
-    #
-    # options._stream = stream;
-    #
-    # const mediaConnection = new MediaConnection(peer, this, options);
-    # this._addConnection(peer, mediaConnection);
-    # return mediaConnection;
-    # }
+    # MediaConnection implemented in Python port.
+    async def call(self, peerId: str, stream: MediaStreamTrack, options: CallOption = {}) -> MediaConnection | None:
+        if self.disconnected :
+            log.warning(
+                "You cannot connect to a new Peer because you called " +
+                ".disconnect() on this Peer and ended your connection with the " +
+                "server. You can create a new Peer to reconnect."
+            )
+            self.emitError(
+                PeerErrorType.Disconnected,
+                    "Cannot connect to new Peer after disconnecting from server."
+                )
+            return
+
+        if stream is None:
+            log.error("To call a peer, you must provide a stream")
+            return
+
+
+        options._stream = stream
+
+        mediaConnection = MediaConnection(peerId, self, options)
+        await mediaConnection.start()
+        self._addConnection(peer, mediaConnection)
+        return mediaConnection
 
     def _addConnection(self,
                        peerId: str, connection: BaseConnection) -> None:
